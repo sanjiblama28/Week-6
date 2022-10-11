@@ -49,8 +49,81 @@ Actions are described in .action files with the following format:
 ---
 # Feedback
 ```
+Create a directory called "action" in our ROS 2 package called "action tutorials interfaces":
+
+```
+cd action_tutorials_interfaces
+mkdir action
+```
+
+![image](https://user-images.githubusercontent.com/92040822/194997859-cf7b8875-7ee6-4fb1-ad5d-61ea9c9b3ec8.png)
 
 
+Make a file called Fibonacci in the action directory. action that includes the following information:
+
+```
+int32 order
+---
+int32[] sequence
+---
+int32[] partial_sequence
+```
+
+## 2. Building an action
+
+The definition of the new Fibonacci action type must be sent to the pipeline that generates Rosidl code before we can use it in our code.
+
+The following lines need be added to our CMakeLists.txt before the ament package() line in the action tutorials interfaces to achieve this:
+
+```
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "action/Fibonacci.action"
+)
+```
+
+We must also include the necessary dependencies in our package.xml file:
+
+```
+<buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+<depend>action_msgs</depend>
+
+<member_of_group>rosidl_interface_packages</member_of_group>
+```
+
+The fact that action definitions contain additional metadata means that we must rely on action msgs (e.g. goal IDs).
+
+The package containing the definition of the Fibonacci action should now be able to be built:
+
+```
+# Change to the root of the workspace
+cd ~/ros2_ws
+# Build
+colcon build
+```
+
+![image](https://user-images.githubusercontent.com/92040822/194997429-6b430f6e-8bbd-4bb3-9f57-33c69ba07dec.png)
+
+We are done!
+
+Action types will often start with the term "action" and the package name. As a result, our new action will be referred to by its complete name, action tutorials interfaces/action/Fibonacci.
+
+Using the command line tool, we can verify that our action was built successfully:
+
+```
+# Source our workspace
+# On Windows: call install/setup.bat
+. install/setup.bash
+# Check that our action definition exists
+ros2 interface show action_tutorials_interfaces/action/Fibonacci
+```
+
+![image](https://user-images.githubusercontent.com/92040822/194998140-8b4ab337-de02-4b82-8eed-09df6c031cbf.png)
+
+
+The definition of the Fibonacci action should appear on the screen.
 
 
 
