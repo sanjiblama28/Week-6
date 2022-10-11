@@ -368,6 +368,176 @@ Let's test our action client by first launching the earlier-built action server:
 python3 fibonacci_action_server.py
 ```
 
+Run the action client in an other terminal.
+
+```
+python3 fibonacci_action_client.py
+```
+
+As the action server completes the goal, the following messages should be printed:
+
+```
+[INFO] [fibonacci_action_server]: Executing goal...
+[INFO] [fibonacci_action_server]: Feedback: array('i', [0, 1, 1])
+[INFO] [fibonacci_action_server]: Feedback: array('i', [0, 1, 1, 2])
+[INFO] [fibonacci_action_server]: Feedback: array('i', [0, 1, 1, 2, 3])
+[INFO] [fibonacci_action_server]: Feedback: array('i', [0, 1, 1, 2, 3, 5])
+# etc.
+```
+
+![image](https://user-images.githubusercontent.com/92040822/195008493-54dd71ba-08eb-4e15-a8fd-607641d65326.png)
+
+The action client should begin and complete as soon as possible. We currently have a working action client, but we receive no feedback or results.
+
+## 2.1 Getting a result
+
+We must first obtain a goal handle for the goal that we sent. The result can then be requested using the goal handle.
+
+The full code for this example is provided here:
+
+```
+import rclpy
+from rclpy.action import ActionClient
+from rclpy.node import Node
+
+from action_tutorials_interfaces.action import Fibonacci
+
+
+class FibonacciActionClient(Node):
+
+    def __init__(self):
+        super().__init__('fibonacci_action_client')
+        self._action_client = ActionClient(self, Fibonacci, 'fibonacci')
+
+    def send_goal(self, order):
+        goal_msg = Fibonacci.Goal()
+        goal_msg.order = order
+
+        self._action_client.wait_for_server()
+
+        self._send_goal_future = self._action_client.send_goal_async(goal_msg)
+
+        self._send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected :(')
+            return
+
+        self.get_logger().info('Goal accepted :)')
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result().result
+        self.get_logger().info('Result: {0}'.format(result.sequence))
+        rclpy.shutdown()
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    action_client = FibonacciActionClient()
+
+    action_client.send_goal(10)
+
+    rclpy.spin(action_client)
+
+
+if __name__ == '__main__':
+    main()
+```
+
+Go ahead and attempt to run our Fibonacci action client while an action server is running in a separate terminal!
+
+```
+python3 fibonacci_action_client.py
+```
+
+![image](https://user-images.githubusercontent.com/92040822/195009217-a65fdda3-72f8-46c5-b863-a95166ea9dce.png)
+
+You should be able to see the goal being accepted and the outcome in the logs.
+
+## 2.2 Getting feedback
+
+We can send goals to our action client. Nice! However, it would be wonderful to hear some input regarding the goals we transmit from the action server.
+
+Here is the whole code for this illustration:
+
+```
+import rclpy
+from rclpy.action import ActionClient
+from rclpy.node import Node
+
+from action_tutorials_interfaces.action import Fibonacci
+
+
+class FibonacciActionClient(Node):
+
+    def __init__(self):
+        super().__init__('fibonacci_action_client')
+        self._action_client = ActionClient(self, Fibonacci, 'fibonacci')
+
+    def send_goal(self, order):
+        goal_msg = Fibonacci.Goal()
+        goal_msg.order = order
+
+        self._action_client.wait_for_server()
+
+        self._send_goal_future = self._action_client.send_goal_async(goal_msg, feedback_callback=self.feedback_callback)
+
+        self._send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected :(')
+            return
+
+        self.get_logger().info('Goal accepted :)')
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result().result
+        self.get_logger().info('Result: {0}'.format(result.sequence))
+        rclpy.shutdown()
+
+    def feedback_callback(self, feedback_msg):
+        feedback = feedback_msg.feedback
+        self.get_logger().info('Received feedback: {0}'.format(feedback.partial_sequence))
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    action_client = FibonacciActionClient()
+
+    action_client.send_goal(10)
+
+    rclpy.spin(action_client)
+
+
+if __name__ == '__main__':
+    main()
+```
+
+Everything is ready for us. Your screen should display feedback if we run our action client.
+
+```
+python3 fibonacci_action_client.py
+```
+
+![image](https://user-images.githubusercontent.com/92040822/195010081-8356976d-ace7-4f85-acc7-2d20318cd105.png)
+
+
+
+
+
+
 
 
 
