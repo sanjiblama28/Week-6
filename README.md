@@ -179,4 +179,197 @@ Let's attempt to run our action server:
 python3 fibonacci_action_server.py
 ```
 
+![image](https://user-images.githubusercontent.com/92040822/195005805-079536ff-680e-41f3-8b1f-52c91067fd85.png)
+
+We can communicate a goal via the command line interface to another terminal:
+
+```
+ros2 action send_goal fibonacci action_tutorials_interfaces/action/Fibonacci "{order: 5}"
+```
+
+![image](https://user-images.githubusercontent.com/92040822/195005945-5bed8f77-710a-4cc2-b45e-e13fcd590e2c.png)
+
+You should see the logged message "Executing goal..." followed by a notice that the goal state was not established in the terminal that is running the action server. The aborted state is assumed by default if the goal handle state is not set in the execute callback.
+
+The succeed() method on the goal handle can be used to show that the goal was successful:
+
+```
+    def execute_callback(self, goal_handle):
+        self.get_logger().info('Executing goal...')
+
+        goal_handle.succeed()
+
+        result = Fibonacci.Result()
+        return result
+```
+
+You should see the goal completed with the status SUCCEED if you restart the action server and send another goal at this point. 
+
+![image](https://user-images.githubusercontent.com/92040822/195006346-83e3bae1-0ce7-4693-97e1-ea8ce72be268.png)
+
+![image](https://user-images.githubusercontent.com/92040822/195006367-2b341169-9964-4b03-b992-d3ee7165785a.png)
+
+Let's now make sure that our target execution computes and returns the specified Fibonacci sequence:
+
+```
+    def execute_callback(self, goal_handle):
+        self.get_logger().info('Executing goal...')
+
+
+        sequence = [0, 1]
+
+
+
+        for i in range(1, goal_handle.request.order):
+
+            sequence.append(sequence[i] + sequence[i-1])
+
+
+        goal_handle.succeed()
+
+        result = Fibonacci.Result()
+
+        result.sequence = sequence
+
+        return result
+```
+
+We compute the sequence, assign it to the result message field, and then proceed to the return.
+
+Send another goal and restart the action server. The aim should be completed with the expected results in order.
+
+![image](https://user-images.githubusercontent.com/92040822/195006747-a1500020-d012-434b-9ad3-87ba9987323e.png)
+
+![image](https://user-images.githubusercontent.com/92040822/195006803-99357e2b-2932-4885-8205-e26e372d6f1a.png)
+
+## 1.2 Publishing feedback
+
+The sequence variable will be swapped out, and the sequence will now be stored in a feedback message. We publish the feedback message and then fall asleep after each update of the feedback message in the for-loop for impact:
+
+```
+import time
+
+
+import rclpy
+from rclpy.action import ActionServer
+from rclpy.node import Node
+
+from action_tutorials_interfaces.action import Fibonacci
+
+
+class FibonacciActionServer(Node):
+
+    def __init__(self):
+        super().__init__('fibonacci_action_server')
+        self._action_server = ActionServer(
+            self,
+            Fibonacci,
+            'fibonacci',
+            self.execute_callback)
+
+    def execute_callback(self, goal_handle):
+        self.get_logger().info('Executing goal...')
+
+
+        feedback_msg = Fibonacci.Feedback()
+
+        feedback_msg.partial_sequence = [0, 1]
+
+
+        for i in range(1, goal_handle.request.order):
+
+            feedback_msg.partial_sequence.append(
+
+                feedback_msg.partial_sequence[i] + feedback_msg.partial_sequence[i-1])
+
+            self.get_logger().info('Feedback: {0}'.format(feedback_msg.partial_sequence))
+
+            goal_handle.publish_feedback(feedback_msg)
+
+            time.sleep(1)
+
+
+        goal_handle.succeed()
+
+        result = Fibonacci.Result()
+
+        result.sequence = feedback_msg.partial_sequence
+
+        return result
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    fibonacci_action_server = FibonacciActionServer()
+
+    rclpy.spin(fibonacci_action_server)
+
+
+if __name__ == '__main__':
+    main()
+```
+
+Utilizing the command line tool with the --feedback option after restarting the action server, we can verify that feedback has now been published:
+
+```
+ros2 action send_goal --feedback fibonacci action_tutorials_interfaces/action/Fibonacci "{order: 5}"
+```
+
+![image](https://user-images.githubusercontent.com/92040822/195008024-7aed6b72-3e4a-4baa-ae36-de3bee6fdd54.png)
+
+
+![image](https://user-images.githubusercontent.com/92040822/195007345-05b776e6-bec4-47ab-bd78-f714953600e0.png)
+
+## 2. Writing an action client
+
+We'll limit the action client to just one file as well. Then, open a new file and name it fibonacci action client.py. Add the following boilerplate code to the new file:
+
+```
+import rclpy
+from rclpy.action import ActionClient
+from rclpy.node import Node
+
+from action_tutorials_interfaces.action import Fibonacci
+
+
+class FibonacciActionClient(Node):
+
+    def __init__(self):
+        super().__init__('fibonacci_action_client')
+        self._action_client = ActionClient(self, Fibonacci, 'fibonacci')
+
+    def send_goal(self, order):
+        goal_msg = Fibonacci.Goal()
+        goal_msg.order = order
+
+        self._action_client.wait_for_server()
+
+        return self._action_client.send_goal_async(goal_msg)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    action_client = FibonacciActionClient()
+
+    future = action_client.send_goal(10)
+
+    rclpy.spin_until_future_complete(action_client, future)
+
+
+if __name__ == '__main__':
+    main()
+```
+
+Let's test our action client by first launching the earlier-built action server:
+
+```
+python3 fibonacci_action_server.py
+```
+
+
+
+
+
 
