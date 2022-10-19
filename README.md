@@ -533,6 +533,298 @@ python3 fibonacci_action_client.py
 
 ![image](https://user-images.githubusercontent.com/92040822/195010081-8356976d-ace7-4f85-acc7-2d20318cd105.png)
 
+# Composing multiple nodes in a single process
+
+
+## Discover available components
+
+Run the following commands in a shell to see what components are registered and accessible in the workspace:
+
+```
+ros2 component types
+```
+
+The terminal will provide a list of every component that is available:
+
+```
+(... components of other packages here)
+composition
+  composition::Talker
+  composition::Listener
+  composition::Server
+  composition::Client
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196695754-20bd1682-0e54-408c-8a42-db48a92739d6.png)
+  
+## Run-time composition using ROS services with a publisher and subscriber
+
+Start the component container in the first shell.
+
+```
+ros2 run rclcpp_components component_container
+```
+
+Open the second shell, then use the ros2 command line tools to confirm if the container is active:
+
+```
+ros2 component list
+```
+
+You ought to see the component's name:
+
+```
+/ComponentManager
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196696246-e7e9202a-1a14-4ab3-8ecb-a5b4a5f0bb64.png)
+
+Load the talker component into the second shell (see the talker source code):
+
+```
+ros2 component load /ComponentManager composition composition::Talker
+```
+
+The command will return the unique ID of the loaded component as well as the node name:
+
+```
+Loaded component 1 into '/ComponentManager' container node as '/talker'
+```
+![image](https://user-images.githubusercontent.com/92040822/196696591-c9d24ce0-ca5a-464a-9468-ad576f604616.png)
+
+Messages indicating that the component was loaded and that a message was published should now appear in the first shell.
+
+![image](https://user-images.githubusercontent.com/92040822/196696795-ce644651-75ba-4b4d-a068-0a8528473160.png)
+
+Run a different command in the second shell to load the listener component (see the listener source code):
+
+```
+ros2 component load /ComponentManager composition composition::Listener
+```
+
+Terminal will return:
+
+```
+Loaded component 2 into '/ComponentManager' container node as '/listener'
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196697102-034a3256-6639-4c72-93bb-c3228e761c14.png)
+
+Now, the container's state may be examined using the ros2 command-line tool:
+
+```
+ros2 component list
+```
+
+The outcome will be as follows:
+
+```
+/ComponentManager
+   1  /talker
+   2  /listener
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196697455-c2d18f17-164f-4540-a740-c94286c1bbc7.png)
+
+The first shell should now provide repeated output for each message that was received.
+
+## Run-time composition using ROS services with a server and client
+
+The first shell contains:
+
+```
+ros2 run rclcpp_components component_container
+```
+
+In the second shell (see the source code for the server and client):
+
+```
+ros2 component load /ComponentManager composition composition::Server
+ros2 component load /ComponentManager composition composition::Client
+```
+![image](https://user-images.githubusercontent.com/92040822/196700307-a1e303ca-a221-4ff3-b434-395f8b3355c9.png)
+
+In this scenario, the client requests something from the server, which then processes the request and sends back an answer, which the client then outputs.
+
+##Compile-time composition using ROS services
+
+This demonstration demonstrates how the same shared libraries can be used to create an executable that runs numerous components from a single file. The talker and listener, as well as the server and client, are all included in the executable.
+
+In the shell call (see source code):
+
+```
+ros2 run composition manual_composition
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196701189-3235f758-0cf1-4056-ba68-b336e2bc5987.png)
+
+This should demonstrate repeated messages from both pairs, including the talker and listener, server, and client.
+
+## Run-time composition using dlopen
+
+This demonstration offers a different approach to run-time composition by building a generic container process and explicitly passing the libraries to load without utilizing ROS APIs. One instance of each "rclcpp::Node" class will be created in each open library's source code by the procedure.
+
+```
+ros2 run composition dlopen_composition `ros2 pkg prefix composition`/lib/libtalker_component.so `ros2 pkg prefix composition`/lib/liblistener_component.so
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196701548-94c73072-f111-49ef-b73c-9d042a0d1f9f.png)
+
+## Composition using launch actions
+
+While the command line tools can be helpful for troubleshooting and debugging component setups, it is frequently more practical to launch a group of components at once. We can make use of the ros2 launch feature to automate this process.
+
+```
+ros2 launch composition composition_demo.launch.py
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196701949-072ec24a-d9f9-41a1-bac9-0006ecac1081.png)
+
+# Advanced Topics
+
+We may look at more sophisticated issues now that the fundamental operation of the components has been completed.
+
+## Unloading components
+
+Start the component container in the first shell.
+
+```
+ros2 run rclcpp_components component_container
+```
+
+Using the ros2 command line tools, confirm the container is active:
+
+```
+ros2 component list
+```
+
+You ought to see the component's name:
+
+```
+/ComponentManager
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196702620-268dfad0-cc21-4731-acfb-6039b53bfec0.png)
+
+Within the second shell (see talker source code). Both the node name and the component's distinctive ID will be returned by the command.
+
+```
+ros2 component load /ComponentManager composition composition::Talker
+ros2 component load /ComponentManager composition composition::Listener
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196702977-1352f25b-9f67-402b-bf8d-235e6c2b06e4.png)
+
+The node can be removed from the component container by using its special ID.
+
+```
+ros2 component unload /ComponentManager 1 2
+```
+
+The terminal should return:
+
+```
+Unloaded component 1 from '/ComponentManager' container
+Unloaded component 2 from '/ComponentManager' container
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196703265-ea574fef-5475-4d20-95cd-04c278b5c5b2.png)
+
+Verify that the talker and listener's repeated messages have stopped in the first shell.
+
+## Remapping container name and namespace
+
+Standard command line parameters can be used to remap the name and namespace of the component manager:
+
+```
+ros2 run rclcpp_components component_container --ros-args -r __node:=MyContainer -r __ns:=/ns
+```
+
+Components can be loaded in a second shell by using the modified container name:
+
+```
+ros2 component load /ns/MyContainer composition composition::Listener
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196704015-2ee12101-fcbb-4afb-babd-0bde5dbbe0b5.png)
+
+![image](https://user-images.githubusercontent.com/92040822/196704105-431a27db-dd25-431f-9213-4de11f920802.png)
+
+## Remap component names and namespaces
+
+Arguments to the load command can be used to change component names and namespaces.
+
+Start the component container in the first shell.
+
+```
+ros2 run rclcpp_components component_container
+```
+
+Several illustrations of name and namespace remapping.
+
+Node name to remap:
+
+```
+ros2 component load /ComponentManager composition composition::Talker --node-name talker2
+```
+
+Remap namespace:
+
+```
+ros2 component load /ComponentManager composition composition::Talker --node-namespace /ns
+```
+
+Remap both:
+
+```
+ros2 component load /ComponentManager composition composition::Talker --node-name talker3 --node-namespace /ns2
+```
+
+Now use ros2 command line utility:
+
+```
+ros2 component list
+```
+
+In the console you should see corresponding entries:
+
+```
+/ComponentManager
+   1  /talker2
+   2  /ns/talker
+   3  /ns2/talker
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196704739-27d7c9b9-861c-4ff6-b9fc-757c95829fb6.png)
+
+![image](https://user-images.githubusercontent.com/92040822/196704864-f163488d-c1b7-4f38-9f01-44b24568552a.png)
+
+## Passing parameter values into components
+
+Passing arbitrary parameters to the node as it is being built is supported by the ros2 component load command-line. Here are some examples of how to use this functionality:
+
+```
+ros2 component load /ComponentManager image_tools image_tools::Cam2Image -p burger_mode:=true
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196705455-d317ca6e-5118-4d81-9a22-f47106ee2e27.png)
+
+## Passing additional arguments into components
+
+Specific settings can be passed to the component manager using the ros2 component load command-line to be used while building the node. Using intra-process communication to instantiate a node is currently the sole supported command-line option. The following are some uses for this functionality:
+
+```
+ros2 component load /ComponentManager composition composition::Talker -e use_intra_process_comms:=true
+```
+
+![image](https://user-images.githubusercontent.com/92040822/196705580-627ccdb4-0a6d-4c6e-87b8-0889d515724b.png)
+
+
+
+
+
+
+
 
 
 
