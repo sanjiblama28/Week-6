@@ -646,7 +646,7 @@ ros2 component load /ComponentManager composition composition::Client
 
 In this scenario, the client requests something from the server, which then processes the request and sends back an answer, which the client then outputs.
 
-##Compile-time composition using ROS services
+## Compile-time composition using ROS services
 
 This demonstration demonstrates how the same shared libraries can be used to create an executable that runs numerous components from a single file. The talker and listener, as well as the server and client, are all included in the executable.
 
