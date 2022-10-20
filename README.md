@@ -998,6 +998,8 @@ Go to the workspace's top level and construct it:
 colcon build
 ```
 
+![image](https://user-images.githubusercontent.com/92040822/196971132-d9b4a896-8ee7-4522-b433-f1833038fcde.png)
+
 You should be able to run the launch file as follows once the colcon build has been successful and you've sourced the workspace:
 
 ```
@@ -1019,6 +1021,8 @@ Make a directory called launch inside of the package.
 ```
 mkdir launch_tutorial/launch
 ```
+
+![image](https://user-images.githubusercontent.com/92040822/196972159-af6efe98-1868-4f99-985b-7a9686baea84.png)
 
 Changes should be made to the package's setup.py file to ensure the installation of the launch files:
 
@@ -1170,6 +1174,8 @@ Go to the workspace's root and create the package:
 colcon build
 ```
 
+![image](https://user-images.githubusercontent.com/92040822/196974298-1b77d237-310d-464a-998f-ac0f9d7e805d.png)
+
 
 ## Launching example
 
@@ -1178,6 +1184,7 @@ Now you can use the ros2 launch command to launch the example_main.launch.py fil
 ```
 ros2 launch launch_tutorial example_main.launch.py
 ```
+
 It will accomplish the following:
 
 - Start a blue-background turtlesim node.
@@ -1188,6 +1195,9 @@ It will accomplish the following:
 
 - If the provided background r parameter is 200 and the use provided red argument is True, change the color to pink after two seconds.
 
+![image](https://user-images.githubusercontent.com/92040822/196980509-753a8f41-000d-492e-9e31-9b226fb52590.png)
+
+![image](https://user-images.githubusercontent.com/92040822/196980609-bde01bbb-8997-4fd2-8924-f2ed8a62cb84.png)
 
 ## Modifying launch arguments
 
@@ -1215,17 +1225,189 @@ Arguments (pass arguments as '<name>:=<value>'):
         (default: '200')
 ```
 
+![image](https://user-images.githubusercontent.com/92040822/196980903-c9221afe-6523-4cdf-8d50-65369b05b175.png)
+
 The launch file can now receive the following arguments:
 
 ```
 ros2 launch launch_tutorial example_substitutions.launch.py turtlesim_ns:='turtlesim3' use_provided_red:='True' new_background_r:=200
 ```
 
+![image](https://user-images.githubusercontent.com/92040822/196981113-5ec82b0b-87b4-4b0f-bb39-7ff82615a7c2.png)
+
+![image](https://user-images.githubusercontent.com/92040822/196981266-ad252736-7c62-414d-8742-63596f8cfea6.png)
+
 ## Summary
 
 This tutorial taught me how to use replacements in launch files and how to make reusable launch files using them.
 
+# Using Event Handlers
 
+## Event handler example launch file
+
+We added a new file called "example_event_handlers.launch.py" to the same directory, i.e. inside the "launch" folder of the "launch tutorial" package.
+
+```
+from launch_ros.actions import Node
+
+from launch import LaunchDescription
+from launch.actions import (DeclareLaunchArgument, EmitEvent, ExecuteProcess,
+                            LogInfo, RegisterEventHandler, TimerAction)
+from launch.conditions import IfCondition
+from launch.event_handlers import (OnExecutionComplete, OnProcessExit,
+                                OnProcessIO, OnProcessStart, OnShutdown)
+from launch.events import Shutdown
+from launch.substitutions import (EnvironmentVariable, FindExecutable,
+                                LaunchConfiguration, LocalSubstitution,
+                                PythonExpression)
+
+
+def generate_launch_description():
+    turtlesim_ns = LaunchConfiguration('turtlesim_ns')
+    use_provided_red = LaunchConfiguration('use_provided_red')
+    new_background_r = LaunchConfiguration('new_background_r')
+
+    turtlesim_ns_launch_arg = DeclareLaunchArgument(
+        'turtlesim_ns',
+        default_value='turtlesim1'
+    )
+    use_provided_red_launch_arg = DeclareLaunchArgument(
+        'use_provided_red',
+        default_value='False'
+    )
+    new_background_r_launch_arg = DeclareLaunchArgument(
+        'new_background_r',
+        default_value='200'
+    )
+
+    turtlesim_node = Node(
+        package='turtlesim',
+        namespace=turtlesim_ns,
+        executable='turtlesim_node',
+        name='sim'
+    )
+    spawn_turtle = ExecuteProcess(
+        cmd=[[
+            FindExecutable(name='ros2'),
+            ' service call ',
+            turtlesim_ns,
+            '/spawn ',
+            'turtlesim/srv/Spawn ',
+            '"{x: 2, y: 2, theta: 0.2}"'
+        ]],
+        shell=True
+    )
+    change_background_r = ExecuteProcess(
+        cmd=[[
+            FindExecutable(name='ros2'),
+            ' param set ',
+            turtlesim_ns,
+            '/sim background_r ',
+            '120'
+        ]],
+        shell=True
+    )
+    change_background_r_conditioned = ExecuteProcess(
+        condition=IfCondition(
+            PythonExpression([
+                new_background_r,
+                ' == 200',
+                ' and ',
+                use_provided_red
+            ])
+        ),
+        cmd=[[
+            FindExecutable(name='ros2'),
+            ' param set ',
+            turtlesim_ns,
+            '/sim background_r ',
+            new_background_r
+        ]],
+        shell=True
+    )
+
+    return LaunchDescription([
+        turtlesim_ns_launch_arg,
+        use_provided_red_launch_arg,
+        new_background_r_launch_arg,
+        turtlesim_node,
+        RegisterEventHandler(
+            OnProcessStart(
+                target_action=turtlesim_node,
+                on_start=[
+                    LogInfo(msg='Turtlesim started, spawning turtle'),
+                    spawn_turtle
+                ]
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessIO(
+                target_action=spawn_turtle,
+                on_stdout=lambda event: LogInfo(
+                    msg='Spawn request says "{}"'.format(
+                        event.text.decode().strip())
+                )
+            )
+        ),
+        RegisterEventHandler(
+            OnExecutionComplete(
+                target_action=spawn_turtle,
+                on_completion=[
+                    LogInfo(msg='Spawn finished'),
+                    change_background_r,
+                    TimerAction(
+                        period=2.0,
+                        actions=[change_background_r_conditioned],
+                    )
+                ]
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=turtlesim_node,
+                on_exit=[
+                    LogInfo(msg=(EnvironmentVariable(name='USER'),
+                            ' closed the turtlesim window')),
+                    EmitEvent(event=Shutdown(
+                        reason='Window closed'))
+                ]
+            )
+        ),
+        RegisterEventHandler(
+            OnShutdown(
+                on_shutdown=[LogInfo(
+                    msg=['Launch was asked to shutdown: ',
+                        LocalSubstitution('event.reason')]
+                )]
+            )
+        ),
+    ])
+```
+
+## Build the package
+
+Go to the root of the workspace, and build the package:
+
+```
+colcon build
+```
+
+## Launching example
+
+The example_event_handlers.launch.py file can now be launched using the ros2 launch command after you have finished creating and sourcing the workspace.
+
+```
+ros2 launch launch_tutorial example_event_handlers.launch.py turtlesim_ns:='turtlesim3' use_provided_red:='True' new_background_r:=200
+```
+The results of this will be:
+
+Start a turtlesim node with a blue background while spawning a second turtle and changing the color to purple. If the provided background_r argument is 200 and the use_provided_red argument is True, change the color to pink after two seconds. Shut down the launch file when the turtlesim window is closed.
+
+Additionally, when the turtlesim node starts, the spawn action, the change_background_r action and the change_background_r_conditioned action is executed respectively and the turtlesim node leaves and the launch process is prompted to shut down  which results in notifications to belogged to the console.
+
+![image](https://user-images.githubusercontent.com/92040822/196988780-b6446fd4-3df1-4dfa-b24d-eefb3d0be555.png)
+
+![image](https://user-images.githubusercontent.com/92040822/196988908-43053242-9f9e-4b1f-b020-e22b769220e1.png)
 
 
 
