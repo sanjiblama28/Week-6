@@ -819,7 +819,7 @@ ros2 component load /ComponentManager composition composition::Talker -e use_int
 
 ![image](https://user-images.githubusercontent.com/92040822/196705580-627ccdb4-0a6d-4c6e-87b8-0889d515724b.png)
 
-# CREATING LAUNCH FILES
+# Creating launch files
 
 ## 1. Setup
 
@@ -866,7 +866,7 @@ def generate_launch_description():
 
 ![image](https://user-images.githubusercontent.com/92040822/196708973-1cb57155-fc2b-4deb-ab23-16c7a2fe6a0d.png)
 
-## 3. ROS2 Launch
+## 3. ROS2 launch
 
 Enter the directory you previously created, then issue the following command to start the launch file you produced above:
 
@@ -918,8 +918,7 @@ The /turtlesim1/sim node is subscribed to the /turtlesim1/turtle1/cmd_vel topic 
 
 Launch files make it easier to execute complicated systems with numerous nodes and intricate configurations. Using the ros2 launch command, launch files created in Python, XML, or YAML can be executed.
 
-# INTEGRATING LAUNCH FILES INTO ROS2 PACKAGES
-
+# Integrating launch files into ROS2 packages
 
 ## 1. Create a package
 Make a living environment for the package at your workspace:
@@ -1006,7 +1005,7 @@ You should be able to run the launch file as follows once the colcon build has b
 ros2 launch py_launch_example my_script_launch.py
 ```
 
-# USING SUBSTITUTIONS
+# Using substitutions
 
 ## 1. Create and setup the package
 
