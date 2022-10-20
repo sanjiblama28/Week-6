@@ -1416,17 +1416,3 @@ Additionally, when the turtlesim node starts, the spawn action, the change_backg
 
 
 
-
-
-
-
-s
-
-
-
-
-
-
-
-
-
