@@ -1176,7 +1176,7 @@ colcon build
 ![image](https://user-images.githubusercontent.com/92040822/196974298-1b77d237-310d-464a-998f-ac0f9d7e805d.png)
 
 
-## Launching example
+## 5. Launching example
 
 Now you can use the ros2 launch command to launch the example_main.launch.py file.
 
@@ -1198,7 +1198,7 @@ It will accomplish the following:
 
 ![image](https://user-images.githubusercontent.com/92040822/196980609-bde01bbb-8997-4fd2-8924-f2ed8a62cb84.png)
 
-## Modifying launch arguments
+## 6. Modifying launch arguments
 
 If you want to modify the default launch arguments, you may either do so in the example main.launch.py launch arguments dictionary.
 
@@ -1236,7 +1236,7 @@ ros2 launch launch_tutorial example_substitutions.launch.py turtlesim_ns:='turtl
 
 ![image](https://user-images.githubusercontent.com/92040822/196981266-ad252736-7c62-414d-8742-63596f8cfea6.png)
 
-## Summary
+## 7. Summary
 
 This tutorial taught me how to use replacements in launch files and how to make reusable launch files using them.
 
